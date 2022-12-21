@@ -45,8 +45,8 @@ class UserUpdate(BaseModel):
         orm_mode = True
 
 class UserLogin(BaseModel):
-    username : str = Field(alias="Username, Email or Phone Number")
-    hashed_password : str = Field(alias="Password")
+    username : str 
+    hashed_password : str
 
     class Config:
         orm_mode = True
@@ -54,6 +54,9 @@ class UserLogin(BaseModel):
 class TokenSheman(BaseModel):
     access_token : str 
     refresh_token : str 
+
+class RefreshToken(BaseModel):
+    refresh_token : str
 
 
 class TokenData(BaseModel):

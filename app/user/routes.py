@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from .schema import UserOut, UserCreate, UserUpdate, TokenData,TokenSheman, UserLogin
+from .schema import UserOut, UserCreate, UserUpdate, TokenData,TokenSheman, UserLogin, RefreshToken
 from sqlalchemy.orm import Session
 from database import get_db
 from .models import User as UserModel
@@ -52,21 +52,27 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/refresh", response_model=TokenSheman)
 def refresh(refresh_token: str=Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    payload = jwt.decode(refresh_token, settings.JWT_REFRESH_SECRET_KEY, algorithms=[settings.ALGORITHM])
-    token_data = TokenData(**payload)
-    if datetime.fromtimestamp(token_data.exp) < datetime.now():
+    try:
+        payload = jwt.decode(refresh_token, settings.JWT_REFRESH_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        token_data = TokenData(**payload)
+        if datetime.fromtimestamp(token_data.exp) < datetime.now():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, 
+                detail="Login required",
+                headers={"WWW-Authenticate": "Bearer"},
+                )
+        db_user = db.query(UserModel).filter(UserModel.username == payload.get("username")).first()
+        if not db_user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User has been deleted")
+        access_token = create_access_token(data=payload)
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token}
+    except jwt.JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Login required",
-            headers={"WWW-Authenticate": "Bearer"},
-            )
-    db_user = db.query(UserModel).filter(UserModel.username == payload.get("username")).first()
-    if not db_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User has been deleted")
-    access_token = create_access_token(data=payload)
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token}
+            detail="Login required", 
+            headers={"WWW-Authenticate": "Bearer"})
 
     
 
