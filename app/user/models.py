@@ -24,5 +24,6 @@ class User(Base):
     address = Column(String(2500), nullable=True)
     user_type = Column(Enum("user","admin", name="user type"), default=UserTypeEnum.user)
     gender = Column(Enum("male", "female", "other", name="User Gemder"), default=UserGenderEnum.other)
+    posts = relationship("Post", back_populates="author")
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)

@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from .schema import UserOut, UserCreate, UserUpdate, TokenData,TokenSheman, UserLogin, RefreshToken
+from fastapi import APIRouter, Depends, HTTPException, status, Body
+from .schema import UserOut, UserCreate, UserUpdate, TokenData,TokenSheman, UserLogin
 from sqlalchemy.orm import Session
 from database import get_db
 from .models import User as UserModel
 from utils.auth import (get_password_hash, verify_password, create_access_token, create_refresh_token)
-from utils.dependencies import get_current_user, oauth2_scheme
+from utils.dependencies import get_current_user
 import uuid
 from datetime import datetime
 from jose import jwt
 from config import settings
+from typing import Any
 
 router = APIRouter()
 
@@ -51,9 +52,10 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     return {"access_token": str(access_token), "refresh_token": str(refresh_token)}
 
 @router.post("/refresh", response_model=TokenSheman)
-def refresh(refresh_token: str=Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def refresh(refresh_token: Any=Body(), db: Session = Depends(get_db)):
+    refresh_token = refresh_token.get("refresh_token")
     try:
-        payload = jwt.decode(refresh_token, settings.JWT_REFRESH_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(str(refresh_token), settings.JWT_REFRESH_SECRET_KEY, algorithms=[settings.ALGORITHM])
         token_data = TokenData(**payload)
         if datetime.fromtimestamp(token_data.exp) < datetime.now():
             raise HTTPException(
@@ -66,12 +68,12 @@ def refresh(refresh_token: str=Depends(oauth2_scheme), db: Session = Depends(get
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User has been deleted")
         access_token = create_access_token(data=payload)
         return {
-            "access_token": access_token,
-            "refresh_token": refresh_token}
+            "access_token": str(access_token),
+            "refresh_token": str(refresh_token)}
     except jwt.JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Login required", 
+            detail="Invalid refresh token", 
             headers={"WWW-Authenticate": "Bearer"})
 
     

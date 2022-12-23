@@ -55,10 +55,6 @@ class TokenSheman(BaseModel):
     access_token : str 
     refresh_token : str 
 
-class RefreshToken(BaseModel):
-    refresh_token : str
-
-
 class TokenData(BaseModel):
     sub : str = None
     exp: int = None
